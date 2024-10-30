@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 生成内容</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        /* 全局样式 */
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f7f9fc;
+            margin: 0;
+            padding: 2rem;
+            color: #333;
+        }
+        h1 {
+            font-size: 1.8rem;
+            color: #2d3748;
+        }
+
+        /* 输入框和按钮样式 */
+        textarea {
+            width: 100%;
+            max-width: 600px;
+            padding: 1rem;
+            font-size: 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-top: 1rem;
+            resize: vertical;
+            background-color: #fff;
+        }
+        button {
+            margin-top: 1rem;
+            padding: 0.8rem 1.2rem;
+            background-color: #4a90e2;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #357ab7;
+        }
+        .loading {
+            cursor: not-allowed;
+        }
+        .loading::after {
+            content: " ⏳";
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            50% { opacity: 0.5; }
+        }
+
+        /* Toggle 样式 */
+        .toggle {
+            width: 100%;
+            max-width: 600px;
+            background-color: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-top: 1rem;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .toggle-title {
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        .toggle-content {
+            padding: 1rem;
+            font-size: 0.95rem;
+            color: #2d3748;
+            border-top: 1px solid #e2e8f0;
+            display: none;
+        }
+        .toggle.active .toggle-content {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>输入话题，生成演讲内容</h1>
+    <textarea id="userInput" rows="4" placeholder="输入您的话题..."></textarea><br>
+    <button id="submitButton" onclick="sendMessage()">提交</button>
+    <!-- Toggle 生成内容 -->
+    <div class="toggle" onclick="toggleContent('chineseSpeech')">
+        <div class="toggle-title">生成内容（中文） <span>+</span></div>
+        <div id="chineseSpeech" class="toggle-content"></div>
+    </div>
+
+    <!-- Toggle 生成翻译 -->
+    <div class="toggle" onclick="toggleContent('englishTranslation')">
+        <div class="toggle-title">生成内容（英文翻译） <span>+</span></div>
+        <div id="englishTranslation" class="toggle-content"></div>
+    </div>
+
+
+    <script>
+        // Toggle 功能: 点击标题展开/收起内容
+        function toggleContent(id) {
+            const toggle = document.getElementById(id);
+            toggle.parentElement.classList.toggle('active');
+            const sign = toggle.parentElement.querySelector('.toggle-title span');
+            sign.textContent = toggle.parentElement.classList.contains('active') ? "-" : "+";
+        }
+        
+        // 发送用户输入到后端
+        async function sendMessage() {
+            // 获取用户输入 getElementById('userInput') 获取 id 为 userInput 的元素
+            const userInput = document.getElementById('userInput').value;
+            const submitButton = document.getElementById('submitButton');
+            
+            // 点击提交后禁用按钮并显示加载图标
+            submitButton.disabled = true;
+            submitButton.classList.add('loading');
+            submitButton.textContent = "处理中...";
+
+            try {
+                // 发送 POST 请求到后端
+                const response = await fetch('http://127.0.0.1:5000/process', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text: userInput })
+                });
+
+                const data = await response.json();
+                // 将生成的内容显示在页面上
+                document.getElementById('chineseSpeech').innerText = "你好你好";
+                document.getElementById('englishTranslation').innerText = data.english;
+            } catch (error) {
+                console.error("请求失败:", error);
+                alert("请求失败，请检查网络连接或重试。错误详情：" + error.message);
+            } finally {
+                // 请求完成后，启用按钮并隐藏加载图标
+                submitButton.disabled = false;
+                submitButton.classList.remove('loading');
+                submitButton.textContent = "提交";
+            }
+
+        }
+    </script>
+</body>
+</html>
