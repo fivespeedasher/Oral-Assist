@@ -37,7 +37,7 @@
         button {
             margin-top: 1rem;
             padding: 0.8rem 1.2rem;
-            background-color: #4a90e2;
+            background-color: #060e16;
             color: #fff;
             border: none;
             border-radius: 8px;
@@ -47,7 +47,7 @@
             transition: background-color 0.3s ease;
         }
         button:hover {
-            background-color: #357ab7;
+            background-color: #6a707a;
         }
         .loading {
             cursor: not-allowed;
@@ -91,6 +91,41 @@
         .toggle.active .toggle-content {
             display: block;
         }
+    /* 底部栏样式 */
+    .footer-bar {
+        position: fixed;
+        bottom: 20px; /* 底部留出空白 */
+        margin: 0 auto;
+        left: auto;
+        width: 60%;
+        height: 60px;
+        background-color: #f0f1f3;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: #fff;
+        font-size: 1rem;
+        box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.2);
+        border-radius: 25px; /* 四角圆角效果 */
+    }
+    
+    .footer-bar button {
+        background-color: #080808;
+        color: #d5d1da;
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        font-size: 24px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1; /* 保持图标高度一致 */
+        padding: 0; /* 移除多余 padding */
+        margin: 0; /* 保证没有多余的边距 */
+    }
+
     </style>
 </head>
 <body>
@@ -109,6 +144,10 @@
         <div id="englishTranslation" class="toggle-content"></div>
     </div>
 
+    <!-- 底部固定录音条 -->
+    <div class="footer-bar">
+        <button id="recordButton">🎙️</button>
+    </div>
 
     <script>
         // Toggle 功能: 点击标题展开/收起内容
@@ -142,7 +181,7 @@
 
                 const data = await response.json();
                 // 将生成的内容显示在页面上
-                document.getElementById('chineseSpeech').innerText = "你好你好";
+                document.getElementById('chineseSpeech').innerText = data.chinese;
                 document.getElementById('englishTranslation').innerText = data.english;
             } catch (error) {
                 console.error("请求失败:", error);
@@ -153,8 +192,86 @@
                 submitButton.classList.remove('loading');
                 submitButton.textContent = "提交";
             }
-
         }
+        
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false; // 是否正在录音
+        
+        // 启动录音
+        async function startRecording() {
+            // 检查浏览器是否支持录音
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert("抱歉，您的浏览器不支持录音功能。");
+                return;
+            }
+
+            // 获取用户的音频权限
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+
+            // 录音数据的收集
+            mediaRecorder.ondataavailable = event => {
+                audioChunks.push(event.data);
+            };
+
+            // 录音结束时，将音频文件生成 Blob 数据
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                console.log("录音文件已生成！");
+                audioChunks = []; // 重置音频数据
+
+                // 停止录音，切换图标
+                isRecording = false;
+                toggleRecordButton(false); // 停止后切换回录音图标
+                
+                // // 创建 FormData 并添加 Blob 文件
+                const formData = new FormData();
+                formData.append("audio_file", audioBlob, "recording.wav");
+
+                // 使用 fetch 上传音频文件
+                await fetch("http://127.0.0.1:5000/upload", {
+                    method: "POST",
+                    body: formData
+                }).then(response => {
+                    if (response.ok) {
+                        console.log("文件上传成功！");
+                    } else {
+                        console.error("文件上传失败。");
+                    }
+                }).catch(error => console.error("网络错误:", error));
+            };
+
+
+            // 开始录音
+            mediaRecorder.start();
+            isRecording = true;
+            toggleRecordButton(isRecording); // 启动后切换为停止图标
+            console.log("录音已启动...");
+        }
+        
+        // 切换按钮的图标 
+        function toggleRecordButton(isRecording) {
+            const recordButton = document.getElementById('recordButton');
+            if (isRecording) {
+                recordButton.textContent = '🟧'; // 设置为停止图标
+                recordButton.style.fontSize = '18px'; // 改变font-size: 18px
+            } else {
+                recordButton.textContent = '🎙️'; // 设置为话筒图标
+                recordButton.style.fontSize = ''; // 恢复默认字体大小
+                recordButton.style.color = ''; // 恢复默认颜色
+            }
+        }
+
+        // 绑定按钮的点击事件
+        document.getElementById('recordButton').addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+                console.log("录音已停止...");
+            } else {
+                startRecording();
+            }
+        });
     </script>
 </body>
 </html>
